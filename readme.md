@@ -1,27 +1,31 @@
-# DES�㷨��Pascalʵ��
+# 加密算法的Pascal实现
 
->���Բ���
+## DES库
 
-## ˵��
+> 到了暑假，总算有时间重构代码了……
 
-����һ����Pascalʵ�ֵ�DES����ϵͳ��
-��û�����κο⣬���Windows�������ֻ��Ϊ�����ļ������л�ȡ�ļ��ĳ��ȡ�
-�������ȥ[�ҵĲ���](http://zhoushengjie.pw/)��[DES](http://zhoushengjie.pw/�����㷨/DES�㷨.html)�˽⡣
+将DES的代码改了改，修复了一些陈年漏洞（奇怪的是以前竟没出问题）。
 
-## ���£����Բ��ͣ�
+另外，根据hash计算的补位，更加合理的设计了文本和密钥的补位。
 
-### July,12 Version 1.0.5
+函数：
 
-1.ȥ��BUG��str10_2���̡�
+`text`表示要加/解密的文本，`key`表示密钥，`encryption`为`true`是加密、为`false`是解密。
 
-2.��ɡ�
+```pas
+function DES_64bit(text,key:string;encryption:boolean):string;
+```
 
-### July,5 Version 1.0.3
+64位的二进制加密，最原始的DES加密。
 
-1.�޸Ĵ�������L16��R16�轻����ϲ���
+```pas
+function DES(text,key:ansistring;encryption:boolean):ansistring;
+```
 
-2.�޸Ĵ���f���������P�û�����©��
+DES文本加密。
 
-### June,28 Version 1.0.0
+```pas
+function DES_hex(text,key:ansistring;encryption:boolean):ansistring;
+```
 
-1.DES��ܻ�����ɡ�
+DES十六进制加密。加密后的文本以十六进制形式显示。
