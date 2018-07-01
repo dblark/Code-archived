@@ -1,12 +1,12 @@
-uses
-windows;//DES_file
-var
-s,key:ansistring;
-inputfilename,outputfilename:string;
-encryption:boolean;
-c,c2:char;
-var
-k:array[1..16]of string;
+unit
+DES;
+interface
+function DES_64bit(text,key:string;encryption:boolean):string;
+function DES(text,key:ansistring;encryption:boolean):ansistring;
+function DES_hex(text,key:ansistring;encryption:boolean):ansistring;
+implementation
+type
+_key=array[1..16]of string;
 procedure str10_2(n,bit:byte;var s:string);
  var
  i:byte;
@@ -26,14 +26,14 @@ procedure leftshift(shift:byte;var s:string);
  t:string;
  begin
  t:='';
- for i:=shift to length(s)+shift-1 do
-  if shift<=length(s) then
+ for i:=shift+1 to length(s)+shift do
+  if i<=length(s) then
   t:=t+s[i]
   else
   t:=t+s[i-length(s)];
  s:=t;
  end;
-procedure generatekeys(key:string);
+procedure generatekeys(key:string;var k:_key);
  const
  PC1:array[1..56]of byte=(57,49,41,33,25,17, 9,
                            1,58,50,42,34,26,18,
@@ -63,7 +63,7 @@ procedure generatekeys(key:string);
  c:=copy(key,1,28);
  d:=copy(key,29,28);
  for i:=1 to 16 do
- begin;
+ begin
  leftshift(shiftbits[i],c);
  leftshift(shiftbits[i],d);
  t:=c+d;
@@ -139,7 +139,7 @@ function f(R,key:string):string;
  R:=t;
  f:='';
  for i:=1 to 8 do
- begin;
+ begin
  t:=copy(R,(i-1)*6+1,6);
  val('%'+t[1]+t[6],x);
  val('%'+copy(t,2,4),y);
@@ -171,10 +171,11 @@ function DES_64bit(text,key:string;encryption:boolean):string;
                            33,1,41, 9,49,17,57,25);
  var
  t:string;
+ k:_key;
  l,r:array[0..16]of string;
  i,j:byte;
  begin
- generatekeys(key);
+ generatekeys(key,k);
  t:='';
  for i:=1 to 64 do
  t:=t+text[IP[i]];
@@ -182,7 +183,7 @@ function DES_64bit(text,key:string;encryption:boolean):string;
  l[0]:=copy(text,1,32);
  r[0]:=copy(text,33,32);
  for i:=1 to 16 do
- begin;
+ begin
  l[i]:=r[i-1];
   if encryption then
   t:=f(r[i-1],k[i])
@@ -207,20 +208,20 @@ function DES_8byte(text,key:string;encryption:boolean):string;
  begin
  s:='';
  for i:=1 to 8 do
- begin;
+ begin
  str10_2(ord(text[i]),8,t);
  s:=s+t;
  end;
  s2:='';
  for i:=1 to 8 do
- begin;
+ begin
  str10_2(ord(key[i]),8,t);
  s2:=s2+t;
  end;
  t:=DES_64bit(s,s2,encryption);
  DES_8byte:='';
  for i:=1 to 8 do
- begin;
+ begin
  val('%'+copy(t,(i-1)*8+1,8),n);
  DES_8byte:=DES_8byte+chr(n);
  end;
@@ -228,31 +229,32 @@ function DES_8byte(text,key:string;encryption:boolean):string;
 function DES_textlong(text:ansistring;key:string;encryption:boolean):ansistring;
  var
  i:longint;
- n:byte;
  begin
  if encryption then
- begin;
- n:=length(text) mod 8;
-  if n>0 then
-   for i:=1 to 8-n do
-   text:=text+chr(0);
+ begin
+ text:=text+#1;
+  if length(text) mod 8>0 then
+   for i:=1 to 8-length(text) mod 8 do
+   text:=text+#0;
  end;
  DES_textlong:='';
  for i:=1 to length(text) div 8 do
  DES_textlong:=DES_textlong+DES_8byte(copy(text,(i-1)*8+1,8),key,encryption);
- if encryption then
- DES_textlong:=DES_textlong+chr(n)
- else
-  for i:=1 to (9-ord(DES_textlong[length(DES_textlong)])) mod 8 do
+ if not encryption then
+ begin
+  while DES_textlong[length(DES_textlong)]=#0 do
   delete(DES_textlong,length(DES_textlong),1);
+ delete(DES_textlong,length(DES_textlong),1);
+ end;
  end;
 function DES(text,key:ansistring;encryption:boolean):ansistring;
  var
  i:longint;
  begin
+ key:=key+#1;
  if length(key) mod 8>0 then
   for i:=1 to 8-length(key) mod 8 do
-  key:=key+chr(0);
+  key:=key+#0;
  DES:=text;
  if encryption then
   for i:=1 to length(key) div 8 do
@@ -281,83 +283,18 @@ function DES_hex(text,key:ansistring;encryption:boolean):ansistring;
  end;
  begin
  if encryption then
- begin;
+ begin
  s:=DES(text,key,encryption);
  DES_hex:='';
   for i:=1 to length(s) do
   DES_hex:=DES_hex+n_c(ord(s[i]) div 16)+n_c(ord(s[i]) mod 16);
  end
  else
- begin;
+ begin
  s:='';
   for i:=1 to length(text) div 2 do
   s:=s+chr(c_n(text[i*2-1])*16+c_n(text[i*2]));
  DES_hex:=DES(s,key,encryption);
  end;
  end;
-procedure DES_file(inputfilename,outputfilename:string;key:ansistring;encryption:boolean);
- var
- t:text;
- c:char;
- s:ansistring;
- n,i:longint;
- th:longword;
- begin
- th:=createfile(pchar(ansistring(inputfilename)),GENERIC_READ,FILE_SHARE_READ,nil,OPEN_EXISTING,0,0);
- n:=getfilesize(th,nil);
- closehandle(th);
- assign(t,inputfilename);
- reset(t);
- s:='';
- for i:=1 to n do
- begin;
- read(t,c);
- s:=s+c;
- end;
- close(t);
- s:=DES_hex(s,key,encryption);
- assign(t,outputfilename);
- rewrite(t);
- write(t,s);
- close(t);
- end;
-begin
-repeat
-writeln('DES加密工具');
-writeln('版权所有 仿冒必究 (c) 2017 周圣杰');
-writeln('***************************************');
-writeln('1:字符串加密 2:字符串加密（十六进制） 3:文件加密 Q:退出');
-readln(c);
-c:=upcase(c);
-if c='Q' then
-halt;
-writeln('1:加密 2:解密');
-readln(c2);
-encryption:=c2='1';
- if (c='1') or (c='2') then
- begin;
- writeln('请输入字符串：');
- readln(s);
- writeln('请输入密钥：');
- readln(key);
- writeln('加/解密后的字符串：');
- end;
- if c='1' then
- writeln(DES(s,key,encryption));
- if c='2' then
- writeln(DES_hex(s,key,encryption));
- if c='3' then
- begin;
- writeln('请注意，Pascal只支持ANSI编码，所以有些含Unicode的文件可能会丢失字符或出现错误。若不为纯文本文件，可使用编辑软件修复；若为纯文本文件，请谨慎使用。');
- writeln;
- writeln('请输入需要加/解密的文件名：');
- readln(inputfilename);
- writeln('请输入加/解密后的文件名：');
- readln(outputfilename);
- writeln('请输入密钥：');
- readln(key);
- DES_file(inputfilename,outputfilename,key,encryption);
- end;
-writeln;
-until false;
 end.
